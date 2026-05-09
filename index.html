@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini-C Compiler — CSC301A</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg2: #13161e;
+    --bg3: #1a1e2a;
+    --bg4: #222736;
+    --border: #2a3045;
+    --border2: #3a4060;
+    --text: #e8ecf4;
+    --text2: #8b92a8;
+    --text3: #4f566b;
+    --accent: #5b8af0;
+    --accent2: #7b6cf6;
+    --green: #3ecf8e;
+    --amber: #f0a840;
+    --red: #f06060;
+    --cyan: #40d0f0;
+    --pink: #f06090;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ─── HEADER ─── */
+  header {
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg2);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; color: #fff;
+  }
+  .logo h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo span { font-size: 12px; color: var(--text2); font-weight: 400; }
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; background: var(--bg4);
+    border: 1px solid var(--border2);
+    padding: 4px 10px; border-radius: 20px; color: var(--text2);
+  }
+
+  /* ─── MAIN LAYOUT ─── */
+  main {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    grid-template-rows: auto 1fr;
+    flex: 1;
+    gap: 0;
+  }
+
+  /* ─── LEFT PANEL ─── */
+  .left-panel {
+    grid-row: 1 / 3;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    background: var(--bg2);
+  }
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--text2);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-header .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); display: inline-block; margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  #editor {
+    flex: 1;
+    background: var(--bg);
+    border: none;
+    color: var(--green);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    padding: 20px;
+    resize: none;
+    outline: none;
+    tab-size: 2;
+    min-height: 340px;
+  }
+  #editor::selection { background: rgba(91,138,240,.3); }
+
+  .samples-bar {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .sample-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; padding: 4px 10px;
+    border: 1px solid var(--border2);
+    border-radius: 4px; background: var(--bg3);
+    color: var(--text2); cursor: pointer;
+    transition: all .15s;
+  }
+  .sample-btn:hover { background: var(--bg4); color: var(--text); border-color: var(--accent); }
+
+  .compile-btn {
+    margin: 16px;
+    padding: 13px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 8px;
+    color: #fff; font-family: 'Syne', sans-serif;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer; letter-spacing: .3px;
+    transition: opacity .15s, transform .1s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .compile-btn:hover { opacity: .9; }
+  .compile-btn:active { transform: scale(.98); }
+
+  /* ─── RIGHT PANEL TABS ─── */
+  .right-top {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    display: flex; align-items: stretch;
+    overflow-x: auto;
+    padding: 0 20px;
+  }
+  .tab {
+    padding: 12px 18px;
+    font-size: 12px; font-weight: 600;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all .15s;
+    display: flex; align-items: center; gap: 7px;
+    user-select: none;
+  }
+  .tab:hover { color: var(--text2); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab .stage-num {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--bg4); font-size: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+  }
+  .tab.active .stage-num { background: var(--accent); color: #fff; }
+  .tab .tick { color: var(--green); font-size: 10px; }
+
+  /* ─── OUTPUT AREA ─── */
+  .output-area {
+    background: var(--bg);
+    overflow-y: auto;
+    padding: 24px 28px;
+    position: relative;
+  }
+
+  .stage-panel { display: none; animation: fadeIn .2s ease; }
+  .stage-panel.active { display: block; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+
+  .section-title {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.4px;
+    color: var(--text2); margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title .color-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+
+  /* Token grid */
+  .token-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px; margin-bottom: 24px;
+  }
+  .token-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .token-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text); font-weight: 500; }
+  .token-type { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 7px; border-radius: 3px; font-weight: 600; }
+  .tok-KEYWORD { background: rgba(91,138,240,.2); color: var(--accent); }
+  .tok-IDENTIFIER { background: rgba(62,207,142,.15); color: var(--green); }
+  .tok-NUMBER { background: rgba(240,168,64,.15); color: var(--amber); }
+  .tok-OPERATOR { background: rgba(240,96,144,.15); color: var(--pink); }
+  .tok-PUNCTUATION { background: rgba(64,208,240,.15); color: var(--cyan); }
+  .tok-STRING { background: rgba(123,108,246,.2); color: var(--accent2); }
+  .tok-FLOAT { background: rgba(240,168,64,.15); color: var(--amber); }
+
+  /* AST */
+  .ast-container { overflow-x: auto; }
+  .ast-node {
+    margin: 2px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.9;
+  }
+  .ast-node .node-type { color: var(--accent); font-weight: 700; }
+  .ast-node .node-val { color: var(--green); }
+  .ast-node .tree-line { color: var(--text3); }
+
+  /* Symbol table */
+  .sym-table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; margin-bottom: 20px;
+  }
+  .sym-table th {
+    text-align: left; padding: 8px 14px;
+    background: var(--bg3); color: var(--text2);
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    border-bottom: 1px solid var(--border2);
+  }
+  .sym-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .sym-table tr:hover td { background: var(--bg3); }
+  .sym-type { color: var(--accent); }
+  .sym-scope { color: var(--amber); }
+  .sym-line { color: var(--text3); }
+
+  /* TAC */
+  .tac-block {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 2;
+  }
+  .tac-line { display: flex; align-items: baseline; gap: 12px; }
+  .tac-lnum { color: var(--text3); min-width: 28px; font-size: 10px; text-align: right; }
+  .tac-label { color: var(--pink); font-weight: 700; }
+  .tac-op { color: var(--accent2); }
+  .tac-var { color: var(--green); }
+  .tac-kw { color: var(--accent); }
+  .tac-num { color: var(--amber); }
+  .tac-cmt { color: var(--text3); }
+
+  /* Errors */
+  .error-box {
+    background: rgba(240,96,96,.1);
+    border: 1px solid rgba(240,96,96,.4);
+    border-radius: 8px; padding: 14px 18px;
+    margin-bottom: 10px;
+  }
+  .error-title { color: var(--red); font-size: 13px; font-weight: 700; margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; }
+  .error-msg { color: #e8a0a0; font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+  .success-box {
+    background: rgba(62,207,142,.08);
+    border: 1px solid rgba(62,207,142,.3);
+    border-radius: 8px; padding: 14px 18px;
+    margin-bottom: 20px;
+    color: var(--green); font-size: 13px; font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px;
+  }
+  .stat-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .stat-val { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+  /* placeholder */
+  .placeholder {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 300px; color: var(--text3);
+    gap: 12px;
+  }
+  .placeholder .ph-icon { font-size: 48px; opacity: .4; }
+  .placeholder p { font-size: 14px; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* pipeline bar */
+  .pipeline {
+    padding: 10px 20px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .pipe-stage {
+    padding: 3px 10px; border-radius: 4px;
+    background: var(--bg4); color: var(--text3);
+    transition: all .3s;
+  }
+  .pipe-stage.done { background: rgba(62,207,142,.15); color: var(--green); }
+  .pipe-stage.active { background: rgba(91,138,240,.2); color: var(--accent); }
+  .pipe-stage.error { background: rgba(240,96,96,.15); color: var(--red); }
+  .pipe-arrow { color: var(--text3); }
+
+  .err-count {
+    font-size: 10px; background: rgba(240,96,96,.2); color: var(--red);
+    padding: 1px 6px; border-radius: 10px; font-weight: 700;
+  }
+
+  .type-mismatch { background: rgba(240,168,64,.08); border: 1px solid rgba(240,168,64,.3); border-radius: 6px; padding: 10px 14px; margin: 6px 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--amber); }
+  .type-ok { background: rgba(62,207,142,.07); border: 1px solid rgba(62,207,142,.25); border-radius: 6px; padding: 10px 14px; margin: 6px 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--green); }
+
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
+    .left-panel { grid-row: 1; border-right: none; border-bottom: 1px solid var(--border); }
+    .stats-row { grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">C</div>
+    <div>
+      <h1>Mini-C Compiler</h1>
+      <span>CSC301A — Compilers Assignment | RUAS 2023 Batch</span>
+    </div>
+  </div>
+  <div class="badge">PLY-based · Python IR</div>
+</header>
+
+<main>
+  <!-- LEFT: Editor -->
+  <div class="left-panel">
+    <div class="panel-header">
+      <div><span class="dot"></span>Source Editor</div>
+      <div style="font-size:10px;color:var(--text3)">Mini-C</div>
+    </div>
+    <div class="samples-bar">
+      <button class="sample-btn" onclick="loadSample('basic')">Basic vars</button>
+      <button class="sample-btn" onclick="loadSample('arithmetic')">Arithmetic</button>
+      <button class="sample-btn" onclick="loadSample('ifelse')">If-else</button>
+      <button class="sample-btn" onclick="loadSample('while')">While loop</button>
+      <button class="sample-btn" onclick="loadSample('for')">For loop</button>
+      <button class="sample-btn" onclick="loadSample('array')">Array</button>
+      <button class="sample-btn" onclick="loadSample('mixed')">Full program</button>
+      <button class="sample-btn" onclick="loadSample('errors')">With errors</button>
+    </div>
+    <textarea id="editor" spellcheck="false">int x = 5;
+float y = 3.14;
+int result;
+
+result = x + 2;
+
+if (result > 4) {
+    print(result);
+} else {
+    print(x);
+}
+
+while (x > 0) {
+    x = x - 1;
+}
+
+print(y);</textarea>
+    <button class="compile-btn" onclick="compile()">
+      ▶&nbsp; Compile &amp; Analyze
+    </button>
+  </div>
+
+  <!-- RIGHT: Tabs + Output -->
+  <div class="right-top" id="tabbar">
+    <div class="tab active" onclick="showTab(0)" id="tab0"><span class="stage-num">1</span> Lexical Analysis</div>
+    <div class="tab" onclick="showTab(1)" id="tab1"><span class="stage-num">2</span> Syntax / AST</div>
+    <div class="tab" onclick="showTab(2)" id="tab2"><span class="stage-num">3</span> Semantic Analysis</div>
+    <div class="tab" onclick="showTab(3)" id="tab3"><span class="stage-num">4</span> Intermediate (TAC)</div>
+    <div class="tab" onclick="showTab(4)" id="tab4"><span class="stage-num">!</span> Errors</div>
+  </div>
+
+  <div class="output-area" id="output-area">
+    <div class="stage-panel active" id="panel0">
+      <div class="placeholder">
+        <div class="ph-icon">⬡</div>
+        <p>Click <strong>Compile &amp; Analyze</strong> to run the compiler</p>
+      </div>
+    </div>
+    <div class="stage-panel" id="panel1"></div>
+    <div class="stage-panel" id="panel2"></div>
+    <div class="stage-panel" id="panel3"></div>
+    <div class="stage-panel" id="panel4"></div>
+  </div>
+</main>
+
+<div class="pipeline" id="pipeline">
+  <span class="pipe-stage" id="ps0">Lexer</span>
+  <span class="pipe-arrow">→</span>
+  <span class="pipe-stage" id="ps1">Parser</span>
+  <span class="pipe-arrow">→</span>
+  <span class="pipe-stage" id="ps2">Semantic</span>
+  <span class="pipe-arrow">→</span>
+  <span class="pipe-stage" id="ps3">IR / TAC</span>
+  <span style="margin-left:auto;color:var(--text3)" id="pipeline-status">Awaiting input…</span>
+</div>
+
+<script>
+const SAMPLES = {
+  basic: `int x;\nfloat y = 10.5;\nint z = 0;\nx = 42;\nz = x;\nprint(x);\nprint(y);`,
+  arithmetic: `int a = 10;\nint b = 3;\nfloat c = 2.5;\nint sum;\nfloat prod;\nsum = a + b;\nprod = a * c;\nsum = (a + b) * 2 - 1;\nprint(sum);\nprint(prod);`,
+  ifelse: `int score = 75;\nif (score >= 90) {\n    print(score);\n} else if (score >= 60) {\n    print(score);\n} else {\n    print(score);\n}`,
+  while: `int i = 0;\nint sum = 0;\nwhile (i < 10) {\n    sum = sum + i;\n    i = i + 1;\n}\nprint(sum);`,
+  for: `int i;\nint total = 0;\nfor (i = 1; i <= 5; i = i + 1) {\n    total = total + i;\n}\nprint(total);`,
+  array: `int list[10];\nint i = 0;\nlist[0] = 100;\nlist[1] = 200;\ni = list[0] + list[1];\nprint(i);`,
+  mixed: `int x = 5;\nfloat y = 3.14;\nint list[5];\nint i;\nint result;\n\nresult = x * 2 + 1;\nlist[0] = result;\n\nif (result > 10) {\n    print(result);\n} else {\n    result = result + x;\n}\n\ni = 0;\nwhile (i < 5) {\n    list[i] = i * 2;\n    i = i + 1;\n}\n\nfor (i = 0; i < 3; i = i + 1) {\n    result = result - 1;\n}\n\nprint(result);\nprint(y);`,
+  errors: `int x = 5;\nfloat y;\nint z;\n@invalid = 10;\ny = x + z;\nprint(undeclared);\nint x;`
+};
+
+function loadSample(name) {
+  document.getElementById('editor').value = SAMPLES[name];
+}
+
+function showTab(n) {
+  document.querySelectorAll('.stage-panel').forEach((p,i) => p.classList.toggle('active', i===n));
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===n));
+  document.getElementById('output-area').scrollTop = 0;
+}
+
+// ══════════════════════════════════════════════
+//  LEXER
+// ══════════════════════════════════════════════
+const KEYWORDS = new Set(['int','float','if','else','while','for','print','return','void']);
+const OPERATORS = new Set(['+','-','*','/','>','<','=','!','&','|']);
+const DOUBLE_OPS = new Set(['==','!=','<=','>=','&&','||']);
+
+function tokenize(src) {
+  const tokens = [];
+  const errors = [];
+  let i = 0, line = 1;
+
+  while (i < src.length) {
+    let ch = src[i];
+
+    // newline
+    if (ch === '\n') { line++; i++; continue; }
+    // whitespace
+    if (/\s/.test(ch)) { i++; continue; }
+    // single-line comment
+    if (ch === '/' && src[i+1] === '/') {
+      while (i < src.length && src[i] !== '\n') i++;
+      continue;
+    }
+    // string literal
+    if (ch === '"') {
+      let s = '"'; i++;
+      while (i < src.length && src[i] !== '"') { s += src[i++]; }
+      s += '"'; i++;
+      tokens.push({type:'STRING', val:s, line});
+      continue;
+    }
+    // number
+    if (/\d/.test(ch) || (ch === '.' && /\d/.test(src[i+1]||''))) {
+      let num = '';
+      let isFloat = false;
+      while (i < src.length && /[\d.]/.test(src[i])) {
+        if (src[i] === '.') isFloat = true;
+        num += src[i++];
+      }
+      tokens.push({type: isFloat ? 'FLOAT' : 'NUMBER', val:num, line});
+      continue;
+    }
+    // identifier or keyword
+    if (/[a-zA-Z_]/.test(ch)) {
+      let id = '';
+      while (i < src.length && /[a-zA-Z0-9_]/.test(src[i])) id += src[i++];
+      tokens.push({type: KEYWORDS.has(id) ? 'KEYWORD' : 'IDENTIFIER', val:id, line});
+      continue;
+    }
+    // double operators
+    const dbl = ch + (src[i+1]||'');
+    if (DOUBLE_OPS.has(dbl)) {
+      tokens.push({type:'OPERATOR', val:dbl, line}); i+=2; continue;
+    }
+    // single operators
+    if (OPERATORS.has(ch)) {
+      tokens.push({type:'OPERATOR', val:ch, line}); i++; continue;
+    }
+    // punctuation
+    if ('(){};,[].'.includes(ch)) {
+      tokens.push({type:'PUNCTUATION', val:ch, line}); i++; continue;
+    }
+    // unknown
+    errors.push({phase:'Lexical', line, msg:`Unexpected character '${ch}'`});
+    i++;
+  }
+  return {tokens, errors};
+}
+
+// ══════════════════════════════════════════════
+//  PARSER → AST
+// ══════════════════════════════════════════════
+function parse(tokens) {
+  let pos = 0;
+  const errors = [];
+
+  function peek() { return tokens[pos] || {type:'EOF', val:'', line:0}; }
+  function eat(type, val) {
+    const t = peek();
+    if (type && t.type !== type) { errors.push({phase:'Syntax', line:t.line, msg:`Expected ${type} but got '${t.val}'`}); return null; }
+    if (val && t.val !== val) { errors.push({phase:'Syntax', line:t.line, msg:`Expected '${val}' but got '${t.val}'`}); return null; }
+    pos++;
+    return t;
+  }
+  function match(type, val) {
+    const t = peek();
+    if (type && t.type !== type) return false;
+    if (val !== undefined && t.val !== val) return false;
+    return true;
+  }
+
+  function parseProgram() {
+    const stmts = [];
+    while (pos < tokens.length) {
+      const s = parseStatement();
+      if (s) stmts.push(s);
+    }
+    return {type:'Program', children: stmts};
+  }
+
+  function parseStatement() {
+    const t = peek();
+    if (t.type === 'KEYWORD' && (t.val === 'int' || t.val === 'float')) return parseDecl();
+    if (t.type === 'KEYWORD' && t.val === 'if') return parseIf();
+    if (t.type === 'KEYWORD' && t.val === 'while') return parseWhile();
+    if (t.type === 'KEYWORD' && t.val === 'for') return parseFor();
+    if (t.type === 'KEYWORD' && t.val === 'print') return parsePrint();
+    if (t.type === 'IDENTIFIER') return parseAssignOrExprStmt();
+    if (t.val === '{') return parseBlock();
+    pos++; return null;
+  }
+
+  function parseDecl() {
+    const typeT = eat('KEYWORD');
+    const nameT = eat('IDENTIFIER');
+    if (!nameT) { skipTo(';'); return null; }
+
+    // array
+    if (match('PUNCTUATION','[')) {
+      eat('PUNCTUATION','[');
+      const sizeT = eat('NUMBER');
+      eat('PUNCTUATION',']');
+      eat('PUNCTUATION',';');
+      return {type:'ArrayDecl', dtype:typeT.val, name:nameT.val, size: sizeT?sizeT.val:'?', line:typeT.line};
+    }
+    // with init
+    if (match('OPERATOR','=')) {
+      eat('OPERATOR','=');
+      const expr = parseExpr();
+      eat('PUNCTUATION',';');
+      return {type:'VarDecl', dtype:typeT.val, name:nameT.val, init:expr, line:typeT.line};
+    }
+    eat('PUNCTUATION',';');
+    return {type:'VarDecl', dtype:typeT.val, name:nameT.val, init:null, line:typeT.line};
+  }
+
+  function parseAssignOrExprStmt() {
+    const nameT = eat('IDENTIFIER');
+    // array assign
+    if (match('PUNCTUATION','[')) {
+      eat('PUNCTUATION','[');
+      const idx = parseExpr();
+      eat('PUNCTUATION',']');
+      eat('OPERATOR','=');
+      const val = parseExpr();
+      eat('PUNCTUATION',';');
+      return {type:'ArrayAssign', name:nameT.val, index:idx, value:val, line:nameT.line};
+    }
+    if (match('OPERATOR','=')) {
+      eat('OPERATOR','=');
+      const expr = parseExpr();
+      eat('PUNCTUATION',';');
+      return {type:'Assign', name:nameT.val, expr, line:nameT.line};
+    }
+    skipTo(';');
+    return {type:'ExprStmt', name:nameT.val, line:nameT.line};
+  }
+
+  function parseIf() {
+    const line = peek().line;
+    eat('KEYWORD','if');
+    eat('PUNCTUATION','(');
+    const cond = parseExpr();
+    eat('PUNCTUATION',')');
+    const then = parseBlock();
+    let elseB = null;
+    if (match('KEYWORD','else')) {
+      eat('KEYWORD','else');
+      if (match('KEYWORD','if')) elseB = parseIf();
+      else elseB = parseBlock();
+    }
+    return {type:'IfStmt', cond, then, else:elseB, line};
+  }
+
+  function parseWhile() {
+    const line = peek().line;
+    eat('KEYWORD','while');
+    eat('PUNCTUATION','(');
+    const cond = parseExpr();
+    eat('PUNCTUATION',')');
+    const body = parseBlock();
+    return {type:'WhileStmt', cond, body, line};
+  }
+
+  function parseFor() {
+    const line = peek().line;
+    eat('KEYWORD','for');
+    eat('PUNCTUATION','(');
+    const init = parseAssignOrExprStmt();
+    const cond = parseExpr();
+    eat('PUNCTUATION',';');
+    const upd = parseUpdateExpr();
+    eat('PUNCTUATION',')');
+    const body = parseBlock();
+    return {type:'ForStmt', init, cond, update:upd, body, line};
+  }
+
+  function parseUpdateExpr() {
+    const nameT = eat('IDENTIFIER');
+    if (match('OPERATOR','=')) {
+      eat('OPERATOR','=');
+      const expr = parseExpr();
+      return {type:'Assign', name:nameT?nameT.val:'?', expr};
+    }
+    return {type:'ExprStmt', name:nameT?nameT.val:'?'};
+  }
+
+  function parsePrint() {
+    const line = peek().line;
+    eat('KEYWORD','print');
+    eat('PUNCTUATION','(');
+    const expr = parseExpr();
+    eat('PUNCTUATION',')');
+    eat('PUNCTUATION',';');
+    return {type:'PrintStmt', expr, line};
+  }
+
+  function parseBlock() {
+    const stmts = [];
+    if (match('PUNCTUATION','{')) {
+      eat('PUNCTUATION','{');
+      while (!match('PUNCTUATION','}') && pos < tokens.length) {
+        const s = parseStatement();
+        if (s) stmts.push(s);
+      }
+      eat('PUNCTUATION','}');
+    } else {
+      const s = parseStatement();
+      if (s) stmts.push(s);
+    }
+    return {type:'Block', children:stmts};
+  }
+
+  function parseExpr() { return parseBinary(0); }
+
+  const PREC = {'||':1,'&&':2,'==':3,'!=':3,'<':4,'>':4,'<=':4,'>=':4,'+':5,'-':5,'*':6,'/':6};
+
+  function parseBinary(minPrec) {
+    let left = parseUnary();
+    while (true) {
+      const t = peek();
+      if (t.type !== 'OPERATOR') break;
+      const p = PREC[t.val];
+      if (p === undefined || p <= minPrec) break;
+      const op = eat('OPERATOR');
+      const right = parseBinary(p);
+      left = {type:'BinOp', op:op.val, left, right, line:op.line};
+    }
+    return left;
+  }
+
+  function parseUnary() {
+    if (match('OPERATOR','-')) {
+      const op = eat('OPERATOR','-');
+      return {type:'UnaryOp', op:'-', expr:parsePrimary(), line:op.line};
+    }
+    return parsePrimary();
+  }
+
+  function parsePrimary() {
+    const t = peek();
+    if (t.val === '(') {
+      eat('PUNCTUATION','(');
+      const e = parseExpr();
+      eat('PUNCTUATION',')');
+      return {type:'Paren', expr:e};
+    }
+    if (t.type === 'NUMBER') { eat('NUMBER'); return {type:'IntLit', val:parseInt(t.val), line:t.line}; }
+    if (t.type === 'FLOAT') { eat('FLOAT'); return {type:'FloatLit', val:parseFloat(t.val), line:t.line}; }
+    if (t.type === 'IDENTIFIER') {
+      eat('IDENTIFIER');
+      if (match('PUNCTUATION','[')) {
+        eat('PUNCTUATION','[');
+        const idx = parseExpr();
+        eat('PUNCTUATION',']');
+        return {type:'ArrayAccess', name:t.val, index:idx, line:t.line};
+      }
+      return {type:'Var', name:t.val, line:t.line};
+    }
+    pos++;
+    return {type:'Unknown', val:t.val, line:t.line};
+  }
+
+  function skipTo(punc) {
+    while (pos < tokens.length && peek().val !== punc) pos++;
+    if (pos < tokens.length) pos++;
+  }
+
+  const ast = parseProgram();
+  return {ast, errors};
+}
+
+// ══════════════════════════════════════════════
+//  SEMANTIC ANALYSIS
+// ══════════════════════════════════════════════
+function analyze(ast) {
+  const symbolTable = [];
+  const errors = [];
+  const checks = [];
+  const declared = new Map(); // name → {type, line, scope}
+  let scope = 'global';
+
+  function declareVar(name, dtype, line, size) {
+    if (declared.has(name)) {
+      errors.push({phase:'Semantic', line, msg:`Variable '${name}' already declared (first at line ${declared.get(name).line})`});
+      checks.push({ok:false, msg:`Duplicate declaration: '${name}' at line ${line}`});
+    } else {
+      declared.set(name, {dtype, line, scope, size});
+      symbolTable.push({name, dtype, scope, line, size: size||null});
+      checks.push({ok:true, msg:`Declared '${name}' as ${dtype}${size?`[${size}]`:''} in ${scope} scope`});
+    }
+  }
+
+  function inferType(node) {
+    if (!node) return 'unknown';
+    if (node.type === 'IntLit') return 'int';
+    if (node.type === 'FloatLit') return 'float';
+    if (node.type === 'Var') {
+      if (declared.has(node.name)) return declared.get(node.name).dtype;
+      errors.push({phase:'Semantic', line:node.line, msg:`Undeclared variable '${node.name}'`});
+      checks.push({ok:false, msg:`Undeclared variable '${node.name}' used at line ${node.line}`});
+      return 'unknown';
+    }
+    if (node.type === 'ArrayAccess') {
+      if (declared.has(node.name)) return declared.get(node.name).dtype;
+      errors.push({phase:'Semantic', line:node.line, msg:`Undeclared array '${node.name}'`});
+      return 'unknown';
+    }
+    if (node.type === 'BinOp') {
+      const l = inferType(node.left);
+      const r = inferType(node.right);
+      if (l === 'float' || r === 'float') return 'float';
+      return 'int';
+    }
+    if (node.type === 'Paren') return inferType(node.expr);
+    if (node.type === 'UnaryOp') return inferType(node.expr);
+    return 'unknown';
+  }
+
+  function visitNode(node) {
+    if (!node) return;
+    switch (node.type) {
+      case 'Program': node.children.forEach(visitNode); break;
+      case 'Block': node.children.forEach(visitNode); break;
+      case 'VarDecl': {
+        declareVar(node.name, node.dtype, node.line);
+        if (node.init) {
+          const t = inferType(node.init);
+          if (t === 'float' && node.dtype === 'int') {
+            errors.push({phase:'Semantic', line:node.line, msg:`Type mismatch: cannot assign float to int '${node.name}'`});
+            checks.push({ok:false, msg:`Type mismatch: float → int for '${node.name}' at line ${node.line}`});
+          } else {
+            checks.push({ok:true, msg:`Type check OK: ${node.dtype} '${node.name}' ← ${t}`});
+          }
+        }
+        break;
+      }
+      case 'ArrayDecl': declareVar(node.name, node.dtype, node.line, node.size); break;
+      case 'Assign': {
+        if (!declared.has(node.name)) {
+          errors.push({phase:'Semantic', line:node.line, msg:`Assignment to undeclared variable '${node.name}'`});
+          checks.push({ok:false, msg:`Undeclared assignment to '${node.name}' at line ${node.line}`});
+        } else {
+          const lhsType = declared.get(node.name).dtype;
+          const rhsType = inferType(node.expr);
+          if (lhsType === 'int' && rhsType === 'float') {
+            errors.push({phase:'Semantic', line:node.line, msg:`Type mismatch: cannot assign float to int '${node.name}'`});
+            checks.push({ok:false, msg:`Type mismatch: float → int '${node.name}' at line ${node.line}`});
+          } else {
+            checks.push({ok:true, msg:`Assignment type check OK: ${lhsType} '${node.name}' ← ${rhsType}`});
+          }
+        }
+        break;
+      }
+      case 'ArrayAssign': {
+        if (!declared.has(node.name)) {
+          errors.push({phase:'Semantic', line:node.line, msg:`Assignment to undeclared array '${node.name}'`});
+        } else {
+          checks.push({ok:true, msg:`Array assignment OK: '${node.name}[...]' at line ${node.line}`});
+        }
+        break;
+      }
+      case 'PrintStmt': {
+        const t = inferType(node.expr);
+        if (t === 'unknown') {
+          errors.push({phase:'Semantic', line:node.line, msg:`print() called with undeclared variable`});
+        } else {
+          checks.push({ok:true, msg:`print() type check OK: argument is ${t} at line ${node.line}`});
+        }
+        break;
+      }
+      case 'IfStmt': {
+        checks.push({ok:true, msg:`If-statement condition type: ${inferType(node.cond)}`});
+        visitNode(node.then);
+        if (node.else) visitNode(node.else);
+        break;
+      }
+      case 'WhileStmt': {
+        checks.push({ok:true, msg:`While condition type: ${inferType(node.cond)}`});
+        visitNode(node.body);
+        break;
+      }
+      case 'ForStmt': {
+        visitNode(node.init);
+        checks.push({ok:true, msg:`For condition type: ${inferType(node.cond)}`});
+        visitNode(node.body);
+        break;
+      }
+    }
+  }
+
+  visitNode(ast);
+  return {symbolTable, errors, checks};
+}
+
+// ══════════════════════════════════════════════
+//  TAC GENERATOR
+// ══════════════════════════════════════════════
+function generateTAC(ast) {
+  const lines = [];
+  let tmp = 0;
+  let lbl = 0;
+
+  function newTmp() { return `t${++tmp}`; }
+  function newLbl() { return `L${++lbl}`; }
+
+  function emit(code) { lines.push(code); }
+
+  function genExpr(node) {
+    if (!node) return '?';
+    if (node.type === 'IntLit') return String(node.val);
+    if (node.type === 'FloatLit') return String(node.val);
+    if (node.type === 'Var') return node.name;
+    if (node.type === 'ArrayAccess') {
+      const idx = genExpr(node.index);
+      const t = newTmp();
+      emit(`  ${t} = ${node.name}[${idx}]`);
+      return t;
+    }
+    if (node.type === 'Paren') return genExpr(node.expr);
+    if (node.type === 'UnaryOp') {
+      const e = genExpr(node.expr);
+      const t = newTmp();
+      emit(`  ${t} = -${e}`);
+      return t;
+    }
+    if (node.type === 'BinOp') {
+      const l = genExpr(node.left);
+      const r = genExpr(node.right);
+      const t = newTmp();
+      emit(`  ${t} = ${l} ${node.op} ${r}`);
+      return t;
+    }
+    return '?';
+  }
+
+  function genNode(node) {
+    if (!node) return;
+    switch (node.type) {
+      case 'Program': node.children.forEach(genNode); break;
+      case 'Block': node.children.forEach(genNode); break;
+      case 'VarDecl': {
+        emit(`; declare ${node.dtype} ${node.name}`);
+        if (node.init) {
+          const v = genExpr(node.init);
+          emit(`  ${node.name} = ${v}`);
+        }
+        break;
+      }
+      case 'ArrayDecl':
+        emit(`; declare ${node.dtype} ${node.name}[${node.size}]`);
+        break;
+      case 'Assign': {
+        const v = genExpr(node.expr);
+        emit(`  ${node.name} = ${v}`);
+        break;
+      }
+      case 'ArrayAssign': {
+        const idx = genExpr(node.index);
+        const val = genExpr(node.value);
+        emit(`  ${node.name}[${idx}] = ${val}`);
+        break;
+      }
+      case 'PrintStmt': {
+        const v = genExpr(node.expr);
+        emit(`  print ${v}`);
+        break;
+      }
+      case 'IfStmt': {
+        const l1 = newLbl(); // else
+        const l2 = newLbl(); // end
+        const cond = genExpr(node.cond);
+        emit(`  if_false ${cond} goto ${l1}`);
+        genNode(node.then);
+        emit(`  goto ${l2}`);
+        emit(`${l1}:`);
+        if (node.else) genNode(node.else);
+        emit(`${l2}:`);
+        break;
+      }
+      case 'WhileStmt': {
+        const lStart = newLbl();
+        const lEnd = newLbl();
+        emit(`${lStart}:`);
+        const cond = genExpr(node.cond);
+        emit(`  if_false ${cond} goto ${lEnd}`);
+        genNode(node.body);
+        emit(`  goto ${lStart}`);
+        emit(`${lEnd}:`);
+        break;
+      }
+      case 'ForStmt': {
+        genNode(node.init);
+        const lStart = newLbl();
+        const lEnd = newLbl();
+        emit(`${lStart}:`);
+        const cond = genExpr(node.cond);
+        emit(`  if_false ${cond} goto ${lEnd}`);
+        genNode(node.body);
+        genNode(node.update);
+        emit(`  goto ${lStart}`);
+        emit(`${lEnd}:`);
+        break;
+      }
+    }
+  }
+
+  genNode(ast);
+  return lines;
+}
+
+// ══════════════════════════════════════════════
+//  RENDER HELPERS
+// ══════════════════════════════════════════════
+function renderTokens(tokens, errors) {
+  const stats = {};
+  tokens.forEach(t => stats[t.type] = (stats[t.type]||0)+1);
+
+  const statsHtml = `<div class="stats-row">
+    ${Object.entries(stats).map(([k,v])=>`<div class="stat-card"><div class="stat-label">${k}</div><div class="stat-val" style="color:var(--${typeColor(k)})">${v}</div></div>`).join('')}
+    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-val" style="color:var(--text)">${tokens.length}</div></div>
+  </div>`;
+
+  const grid = `<div class="token-grid">${
+    tokens.map(t=>`<div class="token-card">
+      <span class="token-val">${escHtml(t.val)}</span>
+      <span class="token-type tok-${t.type}">${t.type}</span>
+    </div>`).join('')
+  }</div>`;
+
+  const errHtml = errors.length ? `<div class="section-title"><span class="color-dot" style="background:var(--red)"></span>Lexical Errors</div>${
+    errors.map(e=>`<div class="error-box"><div class="error-title">Line ${e.line} — Lexical Error</div><div class="error-msg">${escHtml(e.msg)}</div></div>`).join('')
+  }` : `<div class="success-box">✓ Lexical analysis completed — no errors</div>`;
+
+  return `
+    <div class="section-title"><span class="color-dot" style="background:var(--accent)"></span>Token Statistics</div>
+    ${statsHtml}
+    <div class="section-title"><span class="color-dot" style="background:var(--green)"></span>Token Stream (${tokens.length} tokens)</div>
+    ${grid}
+    ${errHtml}
+  `;
+}
+
+function typeColor(t) {
+  return {KEYWORD:'accent',IDENTIFIER:'green',NUMBER:'amber',FLOAT:'amber',OPERATOR:'pink',PUNCTUATION:'cyan',STRING:'accent2'}[t]||'text2';
+}
+
+function renderAST(ast, errors) {
+
+  // ── node colour by type ──────────────────────────────────────────
+  const NODE_COLORS = {
+    Program:     {fill:'#26215C', stroke:'#7F77DD', text:'#CECBF6'},
+    VarDecl:     {fill:'#085041', stroke:'#1D9E75', text:'#9FE1CB'},
+    ArrayDecl:   {fill:'#085041', stroke:'#1D9E75', text:'#9FE1CB'},
+    Assign:      {fill:'#085041', stroke:'#1D9E75', text:'#9FE1CB'},
+    ArrayAssign: {fill:'#085041', stroke:'#1D9E75', text:'#9FE1CB'},
+    IfStmt:      {fill:'#712B13', stroke:'#D85A30', text:'#F5C4B3'},
+    WhileStmt:   {fill:'#712B13', stroke:'#D85A30', text:'#F5C4B3'},
+    ForStmt:     {fill:'#712B13', stroke:'#D85A30', text:'#F5C4B3'},
+    Block:       {fill:'#0C447C', stroke:'#378ADD', text:'#B5D4F4'},
+    PrintStmt:   {fill:'#412402', stroke:'#BA7517', text:'#FAC775'},
+    BinOp:       {fill:'#412402', stroke:'#BA7517', text:'#FAC775'},
+    UnaryOp:     {fill:'#412402', stroke:'#BA7517', text:'#FAC775'},
+    Paren:       {fill:'#412402', stroke:'#BA7517', text:'#FAC775'},
+    Var:         {fill:'#2C2C2A', stroke:'#888780', text:'#D3D1C7'},
+    IntLit:      {fill:'#2C2C2A', stroke:'#888780', text:'#D3D1C7'},
+    FloatLit:    {fill:'#2C2C2A', stroke:'#888780', text:'#D3D1C7'},
+    ArrayAccess: {fill:'#2C2C2A', stroke:'#888780', text:'#D3D1C7'},
+    Unknown:     {fill:'#501313', stroke:'#E24B4A', text:'#F7C1C1'},
+  };
+  function colorFor(type) { return NODE_COLORS[type] || NODE_COLORS.Unknown; }
+
+  // ── flatten AST node → display label + children ──────────────────
+  function nodeLabel(n) {
+    if (!n) return '?';
+    switch(n.type) {
+      case 'Program':     return 'Program';
+      case 'VarDecl':     return `${n.dtype} ${n.name}${n.init ? ' = …' : ''}`;
+      case 'ArrayDecl':   return `${n.dtype} ${n.name}[${n.size}]`;
+      case 'Assign':      return `${n.name} = …`;
+      case 'ArrayAssign': return `${n.name}[…] = …`;
+      case 'IfStmt':      return 'if';
+      case 'WhileStmt':   return 'while';
+      case 'ForStmt':     return 'for';
+      case 'Block':       return `{ ${n.children ? n.children.length : 0} stmt${n.children&&n.children.length!==1?'s':''} }`;
+      case 'PrintStmt':   return 'print(…)';
+      case 'BinOp':       return `BinOp "${n.op}"`;
+      case 'UnaryOp':     return `UnaryOp "${n.op}"`;
+      case 'Paren':       return '( … )';
+      case 'Var':         return `Var: ${n.name}`;
+      case 'IntLit':      return `Int: ${n.val}`;
+      case 'FloatLit':    return `Float: ${n.val}`;
+      case 'ArrayAccess': return `${n.name}[…]`;
+      default:            return n.type || '?';
+    }
+  }
+
+  function nodeChildren(n) {
+    if (!n) return [];
+    const ch = [];
+    if (n.children) n.children.filter(Boolean).forEach(c => ch.push(c));
+    if (n.init)  ch.push(n.init);
+    if (n.cond)  ch.push(n.cond);
+    if (n.then)  ch.push(n.then);
+    if (n.else)  ch.push(n.else);
+    if (n.body)  ch.push(n.body);
+    if (n.init === undefined && n.expr)  ch.push(n.expr);
+    if (n.left)  ch.push(n.left);
+    if (n.right) ch.push(n.right);
+    if (n.index) ch.push(n.index);
+    if (n.value) ch.push(n.value);
+    if (n.update) ch.push(n.update);
+    return ch.filter(Boolean);
+  }
+
+  // ── layout pass: compute (x, y, w) for every node ────────────────
+  const NW = 118, NH = 30, HGAP = 14, VGAP = 54;
+
+  function measureSubtree(n) {
+    const ch = nodeChildren(n);
+    if (!ch.length) { n._w = NW; return; }
+    ch.forEach(measureSubtree);
+    const total = ch.reduce((s,c) => s + c._w, 0) + HGAP * (ch.length - 1);
+    n._w = Math.max(NW, total);
+  }
+
+  function placeSubtree(n, x, y) {
+    n._x = x + n._w / 2 - NW / 2;
+    n._y = y;
+    const ch = nodeChildren(n);
+    if (!ch.length) return;
+    let cx = x;
+    ch.forEach(c => { placeSubtree(c, cx, y + NH + VGAP); cx += c._w + HGAP; });
+  }
+
+  // ── collect all nodes for SVG rendering ──────────────────────────
+  const allNodes = [];
+  const allEdges = [];
+
+  function collect(n) {
+    if (!n) return;
+    allNodes.push(n);
+    nodeChildren(n).forEach(c => {
+      allEdges.push({p: n, c});
+      collect(c);
+    });
+  }
+
+  if (!ast) {
+    const errHtml = errors.length ? `<div class="section-title"><span class="color-dot" style="background:var(--red)"></span>Parse Errors</div>${
+      errors.map(e=>`<div class="error-box"><div class="error-title">Line ${e.line} — Syntax Error</div><div class="error-msg">${escHtml(e.msg)}</div></div>`).join('')
+    }` : '';
+    return `<div class="section-title"><span class="color-dot" style="background:var(--accent2)"></span>Abstract Syntax Tree</div><p style="color:var(--text3);padding:16px">No AST produced.</p>${errHtml}`;
+  }
+
+  measureSubtree(ast);
+  placeSubtree(ast, 0, 20);
+
+  // compute bounding box
+  let maxX = 0, maxY = 0;
+  allNodes.forEach(n => {
+    maxX = Math.max(maxX, n._x + NW);
+    maxY = Math.max(maxY, n._y + NH);
+  });
+  const SVG_W = Math.max(maxX + 20, 400);
+  const SVG_H = maxY + 32;
+
+  // ── build SVG ────────────────────────────────────────────────────
+  // edges first (behind nodes)
+  const edgeSvg = allEdges.map(({p, c}) => {
+    const px = p._x + NW / 2, py = p._y + NH;
+    const cx = c._x + NW / 2, cy = c._y;
+    const my = py + VGAP / 2;
+    return `<path d="M${px},${py} L${px},${my} L${cx},${my} L${cx},${cy}"
+      fill="none" stroke="#3a4060" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }).join('');
+
+  // nodes
+  const nodeSvg = allNodes.map(n => {
+    const col = colorFor(n.type);
+    const lbl = nodeLabel(n);
+    const clipped = lbl.length > 14 ? lbl.slice(0, 13) + '…' : lbl;
+    const nx = n._x, ny = n._y;
+    // type badge (short)
+    const badge = n.type === 'Program' ? '' : n.type;
+    const badgeClipped = badge.length > 11 ? badge.slice(0,10)+'…' : badge;
+    return `<g>
+      <rect x="${nx}" y="${ny}" width="${NW}" height="${NH}" rx="6"
+        fill="${col.fill}" stroke="${col.stroke}" stroke-width="1"/>
+      <text x="${nx + NW/2}" y="${ny + 11}" text-anchor="middle"
+        font-family="JetBrains Mono, monospace" font-size="9" fill="${col.stroke}" font-weight="600">${escHtml(badgeClipped)}</text>
+      <text x="${nx + NW/2}" y="${ny + 22}" text-anchor="middle"
+        font-family="JetBrains Mono, monospace" font-size="10" fill="${col.text}" font-weight="500">${escHtml(clipped)}</text>
+    </g>`;
+  }).join('');
+
+  // legend
+  const legendItems = [
+    {label:'Root',        col: colorFor('Program')},
+    {label:'Declaration', col: colorFor('VarDecl')},
+    {label:'Control',     col: colorFor('IfStmt')},
+    {label:'Block',       col: colorFor('Block')},
+    {label:'Operation',   col: colorFor('BinOp')},
+    {label:'Leaf/Value',  col: colorFor('Var')},
+  ];
+  const legendSvg = legendItems.map((it, i) => {
+    const lx = 4 + i * 100;
+    return `<g>
+      <rect x="${lx}" y="0" width="90" height="18" rx="4"
+        fill="${it.col.fill}" stroke="${it.col.stroke}" stroke-width="1"/>
+      <text x="${lx+45}" y="12" text-anchor="middle"
+        font-family="JetBrains Mono, monospace" font-size="9" fill="${it.col.text}" font-weight="600">${it.label}</text>
+    </g>`;
+  }).join('');
+
+  const svgOutput = `
+  <div style="overflow-x:auto; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:16px 12px 12px;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${SVG_H}" style="display:block;min-width:${SVG_W}px">
+      ${edgeSvg}
+      ${nodeSvg}
+    </svg>
+    <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="604" height="18" style="display:block">
+        ${legendSvg}
+      </svg>
+    </div>
+  </div>`;
+
+  const errHtml = errors.length ? `<div class="divider"></div><div class="section-title"><span class="color-dot" style="background:var(--red)"></span>Parse Errors</div>${
+    errors.map(e=>`<div class="error-box"><div class="error-title">Line ${e.line} — Syntax Error</div><div class="error-msg">${escHtml(e.msg)}</div></div>`).join('')
+  }` : `<div class="divider"></div><div class="success-box">✓ Parsing successful — AST constructed (${allNodes.length} nodes, ${allEdges.length} edges)</div>`;
+
+  return `
+    <div class="section-title"><span class="color-dot" style="background:var(--accent2)"></span>Abstract Syntax Tree — ${allNodes.length} nodes</div>
+    ${svgOutput}
+    ${errHtml}
+  `;
+}
+
+function renderSemantic(symbolTable, errors, checks) {
+  const tableHtml = symbolTable.length ? `
+    <table class="sym-table">
+      <thead><tr><th>#</th><th>Name</th><th>Type</th><th>Scope</th><th>Size</th><th>Line</th></tr></thead>
+      <tbody>${symbolTable.map((s,i)=>`
+        <tr>
+          <td style="color:var(--text3)">${i+1}</td>
+          <td class="token-val">${escHtml(s.name)}</td>
+          <td class="sym-type">${s.dtype}</td>
+          <td class="sym-scope">${s.scope}</td>
+          <td style="color:var(--text3)">${s.size ? s.size : '—'}</td>
+          <td class="sym-line">${s.line}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>` : `<p style="color:var(--text3);font-size:13px">No symbols declared.</p>`;
+
+  const checkHtml = checks.map(c=>`<div class="${c.ok?'type-ok':'type-mismatch'}">${c.ok?'✓':'✗'} ${escHtml(c.msg)}</div>`).join('');
+
+  const errHtml = errors.length ? `<div class="divider"></div><div class="section-title"><span class="color-dot" style="background:var(--red)"></span>Semantic Errors</div>${
+    errors.map(e=>`<div class="error-box"><div class="error-title">Line ${e.line} — Semantic Error</div><div class="error-msg">${escHtml(e.msg)}</div></div>`).join('')
+  }` : `<div class="divider"></div><div class="success-box">✓ Semantic analysis passed — no type errors</div>`;
+
+  return `
+    <div class="section-title"><span class="color-dot" style="background:var(--amber)"></span>Symbol Table (${symbolTable.length} entries)</div>
+    ${tableHtml}
+    <div class="divider"></div>
+    <div class="section-title"><span class="color-dot" style="background:var(--cyan)"></span>Type Checks (${checks.length} checks)</div>
+    <div>${checkHtml}</div>
+    ${errHtml}
+  `;
+}
+
+function renderTAC(lines) {
+  const colored = lines.map((l, i) => {
+    const num = `<span class="tac-lnum">${i+1}</span>`;
+    let text = escHtml(l);
+
+    // label lines
+    if (/^[A-Z]\d+:/.test(l.trim())) {
+      return `<div class="tac-line">${num}<span class="tac-label">${text}</span></div>`;
+    }
+    // comment lines
+    if (l.trim().startsWith(';')) {
+      return `<div class="tac-line">${num}<span class="tac-cmt">${text}</span></div>`;
+    }
+
+    // color keywords
+    text = text
+      .replace(/\bif_false\b/g, '<span class="tac-kw">if_false</span>')
+      .replace(/\bgoto\b/g, '<span class="tac-kw">goto</span>')
+      .replace(/\bprint\b/g, '<span class="tac-kw">print</span>')
+      .replace(/\b(t\d+)\b/g, '<span class="tac-op">$1</span>')
+      .replace(/\b([LI]\d+)\b/g, '<span class="tac-label">$1</span>')
+      .replace(/\b(\d+\.?\d*)\b/g, '<span class="tac-num">$1</span>');
+
+    return `<div class="tac-line">${num}<span style="color:var(--text)">${text}</span></div>`;
+  }).join('');
+
+  return `
+    <div class="section-title"><span class="color-dot" style="background:var(--pink)"></span>Three-Address Code (${lines.length} instructions)</div>
+    <div class="tac-block">${colored}</div>
+    <div class="divider"></div>
+    <div class="success-box">✓ IR generation complete — ${lines.filter(l=>!l.startsWith(';')&&l.trim()).length} active instructions</div>
+  `;
+}
+
+function renderErrors(allErrors) {
+  if (!allErrors.length) {
+    return `<div class="success-box" style="margin-top:20px">
+      ✓ Compilation successful — 0 errors detected across all phases
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:8px;color:var(--text3)">
+      <span style="font-size:40px">✓</span>
+      <p style="font-size:14px">No lexical, syntax, or semantic errors</p>
+    </div>`;
+  }
+  const byPhase = {};
+  allErrors.forEach(e => { (byPhase[e.phase]||(byPhase[e.phase]=[])).push(e); });
+  return `
+    <div class="stats-row" style="margin-top:4px">
+      ${['Lexical','Syntax','Semantic'].map(p=>`<div class="stat-card">
+        <div class="stat-label">${p}</div>
+        <div class="stat-val" style="color:${(byPhase[p]||[]).length?'var(--red)':'var(--green)'}">${(byPhase[p]||[]).length}</div>
+      </div>`).join('')}
+      <div class="stat-card">
+        <div class="stat-label">Total</div>
+        <div class="stat-val" style="color:var(--red)">${allErrors.length}</div>
+      </div>
+    </div>
+    ${Object.entries(byPhase).map(([ph, errs])=>`
+      <div class="section-title" style="margin-top:16px"><span class="color-dot" style="background:var(--red)"></span>${ph} Errors</div>
+      ${errs.map(e=>`<div class="error-box">
+        <div class="error-title">Line ${e.line} — ${e.phase} Error</div>
+        <div class="error-msg">${escHtml(e.msg)}</div>
+      </div>`).join('')}
+    `).join('')}
+  `;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ══════════════════════════════════════════════
+//  MAIN COMPILE
+// ══════════════════════════════════════════════
+function compile() {
+  const src = document.getElementById('editor').value;
+
+  // set pipeline active
+  ['ps0','ps1','ps2','ps3'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = 'pipe-stage';
+  });
+  document.getElementById('pipeline-status').textContent = 'Compiling…';
+
+  // Stage 1: Lexer
+  const {tokens, errors: lexErrors} = tokenize(src);
+  document.getElementById('ps0').className = 'pipe-stage ' + (lexErrors.length ? 'error' : 'done');
+
+  // Stage 2: Parser
+  const {ast, errors: parseErrors} = parse(tokens);
+  document.getElementById('ps1').className = 'pipe-stage ' + (parseErrors.length ? 'error' : 'done');
+
+  // Stage 3: Semantic
+  const {symbolTable, errors: semErrors, checks} = analyze(ast);
+  document.getElementById('ps2').className = 'pipe-stage ' + (semErrors.length ? 'error' : 'done');
+
+  // Stage 4: TAC
+  const tacLines = generateTAC(ast);
+  document.getElementById('ps3').className = 'pipe-stage done';
+
+  const allErrors = [...lexErrors, ...parseErrors, ...semErrors];
+  const totalErr = allErrors.length;
+
+  // Update tab ticks
+  const ticks = [lexErrors.length===0, parseErrors.length===0, semErrors.length===0, true, totalErr===0];
+  ticks.forEach((ok,i) => {
+    const tab = document.getElementById('tab'+i);
+    const existing = tab.querySelector('.tick');
+    if (existing) existing.remove();
+    const ec = i===0?lexErrors.length : i===1?parseErrors.length : i===2?semErrors.length : i===4?totalErr:0;
+    if (i<4) {
+      const tick = document.createElement('span');
+      tick.className = 'tick';
+      tick.textContent = ec > 0 ? `⚠${ec}` : '✓';
+      tick.style.color = ec>0?'var(--red)':'var(--green)';
+      tab.appendChild(tick);
+    }
+    if (i===4) {
+      const tick = document.createElement('span');
+      tick.className = 'err-count';
+      tick.textContent = totalErr;
+      tick.style.display = totalErr?'':'none';
+      tab.appendChild(tick);
+    }
+  });
+
+  // Render panels
+  document.getElementById('panel0').innerHTML = renderTokens(tokens, lexErrors);
+  document.getElementById('panel1').innerHTML = renderAST(ast, parseErrors);
+  document.getElementById('panel2').innerHTML = renderSemantic(symbolTable, semErrors, checks);
+  document.getElementById('panel3').innerHTML = renderTAC(tacLines);
+  document.getElementById('panel4').innerHTML = renderErrors(allErrors);
+
+  document.getElementById('pipeline-status').textContent =
+    totalErr ? `${totalErr} error${totalErr>1?'s':''} found` : `Compilation successful`;
+
+  showTab(0);
+}
+
+// Auto-compile on load
+window.onload = () => compile();
+</script>
+</body>
+</html>
